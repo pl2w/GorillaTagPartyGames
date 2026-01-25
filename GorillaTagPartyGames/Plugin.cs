@@ -2,6 +2,7 @@
 using BepInEx;
 using GorillaTagPartyGames.GameModes.TeamTag;
 using HarmonyLib;
+using Photon.Pun;
 using Utilla.Attributes;
 
 namespace GorillaTagPartyGames;
@@ -13,6 +14,8 @@ public class Plugin : BaseUnityPlugin
 {
     public Plugin()
     {
+        PhotonNetwork.LogLevel = PunLogLevel.Full;
+        
         var harmony = new Harmony(PluginInfo.Guid);
         harmony.PatchAll(Assembly.GetExecutingAssembly());
     }

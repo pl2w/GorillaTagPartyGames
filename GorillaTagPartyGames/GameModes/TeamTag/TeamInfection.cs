@@ -1,8 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Fusion;
 using GorillaGameModes;
+using GorillaNetworking;
 using Photon.Pun;
 using UnityEngine;
 
@@ -11,6 +11,9 @@ namespace GorillaTagPartyGames.GameModes.TeamTag;
 public class TeamInfection : GorillaGameManager
 {
     private Dictionary<int, Team> _playerTeams = new();
+    private bool _isRestarting = false;
+    private float _restartTimer = 0f;
+    private const float RestartDelay = 3f;
 
     private readonly Dictionary<Team, int> _teamMaterialIndex = new()
     {
@@ -18,8 +21,6 @@ public class TeamInfection : GorillaGameManager
         { Team.Red, 2 },
         { Team.Blue, 3 }
     };
-    
-    private TeamInfectionData _teamInfectionData =  new();
 
     public override GameModeType GameType() => (GameModeType)GameModeInfo.TeamTagId;
     public override string GameModeName() => GameModeInfo.TeamTagGuid;
@@ -28,20 +29,31 @@ public class TeamInfection : GorillaGameManager
     public override void StartPlaying()
     {
         base.StartPlaying();
-        if (!NetworkSystem.Instance.IsMasterClient)
-            return;
+        if (!NetworkSystem.Instance.IsMasterClient) return;
 
         ResetGame();
     }
 
+    public override void Tick()
+    {
+        base.Tick();
+
+        if (_isRestarting)
+        {
+            _restartTimer += Time.deltaTime;
+            if (_restartTimer >= RestartDelay)
+            {
+                RestartGame();
+            }
+        }
+    }
+
     public override void ResetGame()
     {
-        Debug.Log("[TeamInfection] ResetGame called.");
+        if (!NetworkSystem.Instance.IsMasterClient) return;
 
-        List<NetPlayer> allPlayers = NetworkSystem.Instance.AllNetPlayers.ToList();
-        allPlayers = allPlayers.OrderBy(_ => Random.value).ToList();
-
-        for (var i = 0; i < allPlayers.Count; i++)
+        var players = currentNetPlayerArray.OrderBy(_ => Random.value).ToList();
+        for (int i = 0; i < players.Count; i++)
         {
             var team = i switch
             {
@@ -49,113 +61,48 @@ public class TeamInfection : GorillaGameManager
                 1 => Team.Blue,
                 _ => Team.Teamless
             };
-
-            Debug.Log($"[TeamInfection] Assigning {allPlayers[i]?.ActorNumber ?? -1} to team {team}");
-            ChangePlayerTeam(allPlayers[i], team);
+            ChangePlayerTeam(players[i], team);
         }
     }
 
-    public override void NewVRRig(NetPlayer player, int vrrigPhotonViewID, bool didTutorial)
+    private void RestartGame()
     {
-        base.NewVRRig(player, vrrigPhotonViewID, didTutorial);
-        Debug.Log($"[TeamInfection] NewVRRig called for actor {player.ActorNumber}");
-
-        if (!NetworkSystem.Instance.IsMasterClient)
+        foreach (var player in currentNetPlayerArray)
         {
-            Debug.Log("[TeamInfection] Not master client. Skipping team assignment.");
-            return;
+            if (player != null)
+                ChangePlayerTeam(player, Team.Teamless);
         }
-
-        if (!_playerTeams.ContainsKey(player.ActorNumber))
-        {
-            Debug.Log($"[TeamInfection] Actor {player.ActorNumber} had no team, assigning Teamless.");
-            ChangePlayerTeam(player, Team.Teamless);
-        }
-    }
-
-    public override void ReportTag(NetPlayer taggedPlayer, NetPlayer taggingPlayer)
-    {
-        Debug.Log($"[TeamInfection] ReportTag called: {taggingPlayer.ActorNumber} -> {taggedPlayer.ActorNumber}");
-
-        if (!NetworkSystem.Instance.IsMasterClient)
-        {
-            Debug.Log("[TeamInfection] Not master client. Ignoring tag.");
-            return;
-        }
-
-        if (!LocalCanTag(taggingPlayer, taggedPlayer))
-        {
-            Debug.Log($"[TeamInfection] LocalCanTag returned false: {taggingPlayer.ActorNumber} cannot tag {taggedPlayer.ActorNumber}");
-            return;
-        }
-
-        if (!_playerTeams.TryGetValue(taggingPlayer.ActorNumber, out var taggingPlayerTeam))
-        {
-            Debug.LogWarning($"[TeamInfection] Tagging player {taggingPlayer.ActorNumber} has no team; tag ignored");
-            return;
-        }
-
-        Debug.Log($"[TeamInfection] Tag successful! Assigning actor {taggedPlayer.ActorNumber} to team {taggingPlayerTeam}");
-        ChangePlayerTeam(taggedPlayer, taggingPlayerTeam);
-
-        CheckGameStatus();
-    }
-
-    private IEnumerator GameRestartCountdown()
-    {
-        Debug.Log("[TeamInfection] GameRestartCountdown started.");
-
-        var allPlayers = NetworkSystem.Instance.AllNetPlayers;
-        foreach (var player in allPlayers)
-        {
-            if (player == null) continue;
-            Debug.Log($"[TeamInfection] Resetting actor {player.ActorNumber} to Teamless.");
-            ChangePlayerTeam(player, Team.Teamless);
-        }
-
-        Debug.Log("[TeamInfection] Restarting game in 3 seconds...");
-
-        yield return new WaitForSecondsRealtime(3);
 
         ResetGame();
+        _isRestarting = false;
     }
 
     public void CheckGameStatus()
     {
-        if (!NetworkSystem.Instance.IsMasterClient)
-            return;
+        if (!NetworkSystem.Instance.IsMasterClient || _isRestarting) return;
 
-        var redTeamPlayers = GetTeamCount(Team.Red);
-        var blueTeamPlayers = GetTeamCount(Team.Blue);
-        var teamlessTeamPlayers = GetTeamCount(Team.Teamless);
-
-        Debug.Log($"[TeamInfection] Team counts - Red: {redTeamPlayers}, Blue: {blueTeamPlayers}, Teamless: {teamlessTeamPlayers}");
-
-        if (redTeamPlayers == NetworkSystem.Instance.AllNetPlayers.Length)
+        int total = currentNetPlayerArray.Length;
+        if (GetTeamCount(Team.Red) == total ||
+            GetTeamCount(Team.Blue) == total ||
+            GetTeamCount(Team.Teamless) == total)
         {
-            Debug.Log("[TeamInfection] Red team has won. Restarting round.");
-            StartCoroutine(GameRestartCountdown());
-        }
-
-        if (blueTeamPlayers == NetworkSystem.Instance.AllNetPlayers.Length)
-        {
-            Debug.Log("[TeamInfection] Blue team has won. Restarting round.");
-            StartCoroutine(GameRestartCountdown());
-        }
-
-        if (teamlessTeamPlayers == NetworkSystem.Instance.AllNetPlayers.Length)
-        {
-            Debug.Log("[TeamInfection] Everyone is teamless? Restarting round to fix.");
-            StartCoroutine(GameRestartCountdown());
+            _isRestarting = true;
+            _restartTimer = 0f;
         }
     }
 
-    public void ChangePlayerTeam(NetPlayer netPlayer, Team newTeam)
-    {
-        if (netPlayer == null)
-            return;
+    private int GetTeamCount(Team team) =>
+        currentNetPlayerArray.Count(player =>
+            player != null && _playerTeams.TryGetValue(player.ActorNumber, out var t) && t == team);
 
-        _playerTeams[netPlayer.ActorNumber] = newTeam;
+    public override void ReportTag(NetPlayer taggedPlayer, NetPlayer taggingPlayer)
+    {
+        if (!NetworkSystem.Instance.IsMasterClient) return;
+        if (!LocalCanTag(taggingPlayer, taggedPlayer)) return;
+        if (!_playerTeams.TryGetValue(taggingPlayer.ActorNumber, out var taggingTeam)) return;
+
+        ChangePlayerTeam(taggedPlayer, taggingTeam);
+        CheckGameStatus();
     }
 
     public override bool LocalCanTag(NetPlayer myPlayer, NetPlayer otherPlayer)
@@ -165,68 +112,86 @@ public class TeamInfection : GorillaGameManager
         var myTeam = GetPlayerTeam(myPlayer);
         var otherTeam = GetPlayerTeam(otherPlayer);
 
-        var canTag = myTeam != Team.Teamless && myTeam != otherTeam;
-        return canTag;
+        return myTeam != Team.Teamless && myTeam != otherTeam;
+    }
+
+    private Team GetPlayerTeam(NetPlayer player) =>
+        _playerTeams.GetValueOrDefault(player.ActorNumber, Team.Teamless);
+
+    private void ChangePlayerTeam(NetPlayer player, Team newTeam)
+    {
+        if (player == null) return;
+
+        if (_playerTeams.TryGetValue(player.ActorNumber, out var currentTeam) && currentTeam == newTeam)
+            return;
+
+        _playerTeams[player.ActorNumber] = newTeam;
+
+        var rig = FindPlayerVRRig(player);
+        if (rig != null)
+            UpdatePlayerAppearance(rig);
     }
 
     public override int MyMatIndex(NetPlayer player)
     {
-        var team = _playerTeams.GetValueOrDefault(player.ActorNumber, Team.Teamless);
-        var matIndex = _teamMaterialIndex[team];
-        return matIndex;
+        var team = GetPlayerTeam(player);
+        return _teamMaterialIndex[team];
     }
 
     public override void OnPlayerLeftRoom(NetPlayer otherPlayer)
     {
         base.OnPlayerLeftRoom(otherPlayer);
-        if (!NetworkSystem.Instance.IsMasterClient)
-            return;
+        if (!NetworkSystem.Instance.IsMasterClient) return;
 
         _playerTeams.Remove(otherPlayer.ActorNumber);
+        CheckGameStatus();
     }
 
-    public override void OnSerializeRead(object newData)
+    public override void NewVRRig(NetPlayer player, int vrrigPhotonViewID, bool didTutorial)
     {
-        Debug.Log("Received new TeamInfectionData");
-        _teamInfectionData = (TeamInfectionData)newData;
-        
-        Debug.Log(_teamInfectionData.testData);
-    }
+        base.NewVRRig(player, vrrigPhotonViewID, didTutorial);
+        if (!NetworkSystem.Instance.IsMasterClient) return;
 
-    public override object OnSerializeWrite() => _teamInfectionData;
+        if (!_playerTeams.ContainsKey(player.ActorNumber))
+            ChangePlayerTeam(player, Team.Teamless);
+
+        CheckGameStatus();
+    }
 
     public override void OnSerializeRead(PhotonStream stream, PhotonMessageInfo info)
     {
-        if (NetworkSystem.Instance.IsMasterClient) 
-            return;
-        
-        _teamInfectionData = stream.ReceiveNext() as TeamInfectionData;
+        if (NetworkSystem.Instance.IsMasterClient) return;
+
+        int size = (int)stream.ReceiveNext();
+        for (int i = 0; i < size; i++)
+        {
+            int actor = (int)stream.ReceiveNext();
+            Team team = (Team)(byte)stream.ReceiveNext();
+
+            _playerTeams[actor] = team;
+        }
     }
-    
+
     public override void OnSerializeWrite(PhotonStream stream, PhotonMessageInfo info)
-    {    
-        if (!NetworkSystem.Instance.IsMasterClient) 
-            return;
-        
-        stream.SendNext(_teamInfectionData);
+    {
+        if (!NetworkSystem.Instance.IsMasterClient) return;
+
+        stream.SendNext(_playerTeams.Count);
+        foreach (var (actor, team) in _playerTeams)
+        {
+            stream.SendNext(actor);
+            stream.SendNext((byte)team);
+        }
     }
-    
+
     public override void AddFusionDataBehaviour(NetworkObject behaviour) { }
-
-    private Team GetPlayerTeam(NetPlayer player) =>
-        _playerTeams.GetValueOrDefault(player.ActorNumber, Team.Teamless);
-
-    private int GetTeamCount(Team team) =>
-        NetworkSystem.Instance.AllNetPlayers.Count(player =>
-            player != null &&
-            _playerTeams.TryGetValue(player.ActorNumber, out var t) &&
-            t == team
-        );
+    public override void OnSerializeRead(object newData) { }
+    public override object OnSerializeWrite() => null;
 }
 
-public enum Team
+public enum Team : byte
 {
     Teamless,
     Red,
-    Blue,
+    Blue
 }
