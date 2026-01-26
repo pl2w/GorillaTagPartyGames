@@ -28,7 +28,7 @@ Failing to pass the potato eliminates the player and allows them to slow down re
 ## Build
 To build the project, you must specify the path to your Gorilla Tag installation.
 
-Create a file named `Directory.Build.local.props` in the root of the repository and add the following contents:
+Create a file named `Directory.Build.local.props` in the root of the gamemode's repository and add the following contents:
 
 ```xml
 <!-- Directory.Build.local.props -->
