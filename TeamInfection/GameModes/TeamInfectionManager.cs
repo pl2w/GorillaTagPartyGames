@@ -159,16 +159,16 @@ public class TeamInfectionManager : GorillaGameManager
 
     public override bool LocalCanTag(NetPlayer myPlayer, NetPlayer otherPlayer)
     {
-        Team taggingTeam = _playerTeams[myPlayer.ActorNumber];
-        Team taggedTeam = _playerTeams[otherPlayer.ActorNumber];
+        if (!_playerTeams.TryGetValue(myPlayer.ActorNumber, out var taggingTeam) ||
+            !_playerTeams.TryGetValue(otherPlayer.ActorNumber, out var taggedTeam))
+        {
+            return false;
+        }
 
         if (taggingTeam == Team.Teamless)
             return false;
         
-        if (taggingTeam != taggedTeam)
-            return true;
-
-        return false;
+        return taggingTeam != taggedTeam;
     }
 
     public override void ReportTag(NetPlayer taggedPlayer, NetPlayer taggingPlayer)
@@ -178,14 +178,19 @@ public class TeamInfectionManager : GorillaGameManager
         
         if (!LocalCanTag(taggingPlayer, taggedPlayer)) 
             return;
+
+        if (!_playerTeams.TryGetValue(taggingPlayer.ActorNumber, out var taggerTeam)) 
+            return;
         
-        _playerTeams[taggedPlayer.ActorNumber] = _playerTeams[taggingPlayer.ActorNumber];
+        _playerTeams[taggedPlayer.ActorNumber] = taggerTeam;
         CheckWinCondition();
     }
 
     public override float[] LocalPlayerSpeed()
     {
-        if (_playerTeams[NetworkSystem.Instance.LocalPlayer.ActorNumber] != Team.Teamless)
+        var myTeam = _playerTeams.GetValueOrDefault(NetworkSystem.Instance.LocalPlayer.ActorNumber, Team.Teamless);
+
+        if (myTeam != Team.Teamless)
         {
             playerSpeed[0] = fastJumpLimit;
             playerSpeed[1] = fastJumpMultiplier;
