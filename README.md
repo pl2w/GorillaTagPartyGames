@@ -25,23 +25,5 @@ Failing to pass the potato eliminates the player and allows them to slow down re
 |---------|------------------|
 | Utilla  | >= v1.6.25        |
 
-## Build
-To build the project, you must specify the path to your Gorilla Tag installation.
-
-Create a file named `Directory.Build.local.props` in the root of the gamemode's repository and add the following contents:
-
-```xml
-<!-- Directory.Build.local.props -->
-<Project>
-    <PropertyGroup>
-        <GorillaTagDir>PATH_TO_GORILLA_TAG</GorillaTagDir>
-    </PropertyGroup>
-</Project>
-```
-Replace `PATH_TO_GORILLA_TAG` with the path to your Gorilla Tag installation, for example:
-```xml
-<GorillaTagDir>mnt/wdblue/SteamLibrary/steamapps/common/Gorilla Tag</GorillaTagDir>
-```
-
 ## Disclaimer
 This product is not affiliated with Another Axiom Inc. or its videogames Gorilla Tag and Orion Drift and is not endorsed or otherwise sponsored by Another Axiom. Portions of the materials contained herein are property of Another Axiom. ©2021 Another Axiom Inc.
