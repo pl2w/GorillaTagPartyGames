@@ -24,7 +24,7 @@ Failing to pass the potato eliminates the player and allows them to slow down re
 | Library    | Version Requirement |
 |------------|---------------------|
 | Utilla     | >= v1.6.25          |
-| MonkeLib   | >= v0.1.0           |
+| [MonkeLib](https://github.com/pl2w/MonkeLib)   | >= v0.1.0           |
 
 ## Disclaimer
 This product is not affiliated with Another Axiom Inc. or its videogames Gorilla Tag and Orion Drift and is not endorsed or otherwise sponsored by Another Axiom. Portions of the materials contained herein are property of Another Axiom. ©2021 Another Axiom Inc.
