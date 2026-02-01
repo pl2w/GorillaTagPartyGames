@@ -4,14 +4,21 @@ Each gamemode is implemented as its own standalone mod.
 
 ## Gamemodes
 ### Team Infection
-Two teams (Red & Blue) compete to infect all other players.  
-The first team to convert everyone to their side wins.
+Two teams (Red & Blue) compete to convert all other players to their side.   
+Tag a player on the opposing team to convert them to your team.   
+The first team to turn the entire lobby to their side wins.
 
 ***insert gameplay mp4 here...***
 
 ### Hot Potato
 One player starts with the potato. The potato is passed by tagging another player before the countdown ends.  
 Failing to pass the potato eliminates the player and allows them to slow down remaining players.
+
+***insert gameplay mp4 here...***
+
+### Golden Banana
+A Golden Banana spawns in a random spot. Be the first player to hold it for 15 seconds total to win.   
+You can grab the golden banana by tagging the current holder.
 
 ***insert gameplay mp4 here...***
 
