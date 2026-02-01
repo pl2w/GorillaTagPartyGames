@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamInfection", "TeamInfect
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HotPotato", "HotPotato\HotPotato.csproj", "{A7AB62F3-7599-4A53-B11E-973AB93971E4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoldenBanana", "GoldenBanana\GoldenBanana.csproj", "{3227A486-3B4A-4451-B467-816C2CD406D4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoldenMonkey", "GoldenMonkey\GoldenMonkey.csproj", "{3227A486-3B4A-4451-B467-816C2CD406D4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
